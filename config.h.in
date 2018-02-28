@@ -1,0 +1,25 @@
+/*
+Project: YAOOnOffS - Yet An Other on/off Switch (Sonoff)
+File: config.h
+Version: 0.1
+Create by: Rom1 <rom1@canel.ch>
+		   CANEL - https://www.canel.ch
+Date: 28/02/18
+License: GNU GENERAL PUBLIC LICENSE v3
+Language: Arduino (C/C++)
+Description: Un autre firmware pour les cartes ESP8266 pour piloter un relais. Compatible Sonoff
+*/
+
+const char *hostString = "yaoonoffs";
+const char *ssid       = "--------";
+const char *password   = "--------";
+const char *serverMQTT = "mqtt.server.lan";
+const int  portMQTT    = 1883;
+const char *userMQTT   = "--------";
+const char *passwdMQTT = "--------";
+
+const int relay1  = 16;
+const int button1 = 5;
+
+
+// vim: ft=arduino tw=100 et ts=2 sw=2
