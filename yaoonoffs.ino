@@ -55,7 +55,7 @@ PubSubClient clientMQTT(serverMQTT, portMQTT, espClient);
 /* Variables globales */
 int state_relay1 = 0;
 int lastDebounceTime = 5;
-int debounceDelay = 50;
+int debounceDelay = 500;
 
 /*************/
 /* Functions */
@@ -178,6 +178,7 @@ void buttonISR(void)
 
 void setup(void)
 {
+//  delay(5000);
   pinMode(relay1, OUTPUT);
 #ifdef SWITCH
   pinMode(button1, INPUT_PULLUP);
@@ -215,7 +216,7 @@ void setup(void)
   {
     Serial.print("Connecting to MQTT server...");
     if(clientMQTT.connect("arduinoClient", userMQTT, passwdMQTT))
-    {
+    
       Serial.println("OK");
       clientMQTT.setCallback(rcvMQTT);
       clientMQTT.subscribe("yaoonoffs/relay/cmd");
