@@ -12,9 +12,10 @@ Description: Un autre firmware pour les cartes ESP8266 pour piloter un relais. C
 
 //#define DEBUG
 #define HTTP
-//#define USE_HTTPS         /* Utilise le protocole HTTPS
-//#define MQTT              /* Activer le serveur MQTT. Attention, il ne passe par une couche TLS */
-#define SWITCH
+#define USE_HTTPS             /* Utilise le protocole HTTPS */
+#define M_DNS                 /* Découverte de l'objet avec mDNS */
+#define MQTT                  /* Activer le serveur MQTT. Attention, il ne passe par une couche TLS */
+#define SWITCH                /* Utiliser un bouton pour piloter l'interrupteur */
 
 #include <ESP8266WiFi.h>
 
@@ -24,6 +25,10 @@ Description: Un autre firmware pour les cartes ESP8266 pour piloter un relais. C
   #include <ESP8266WebServerSecure.h>
   #include "cert-ssl.h"
 #endif//USE_HTTPS
+
+#ifdef M_DNS
+#include <ESP8266mDNS.h>
+#endif//M_DNS
 
 #ifdef MQTT
   #include <PubSubClient.h>
@@ -38,7 +43,9 @@ Description: Un autre firmware pour les cartes ESP8266 pour piloter un relais. C
 
 
 /* Définir les librairies */
+#ifdef MQTT
 WiFiClient espClient;
+#endif//MQTT
 
 #ifdef HTTP
 #ifndef USE_HTTPS
@@ -55,7 +62,7 @@ PubSubClient clientMQTT(serverMQTT, portMQTT, espClient);
 /* Variables globales */
 int state_relay1 = 0;
 int lastDebounceTime = 5;
-int debounceDelay = 50;
+int debounceDelay = 500;
 
 /*************/
 /* Functions */
@@ -178,18 +185,19 @@ void buttonISR(void)
 
 void setup(void)
 {
+/* SETUP Pinouts */
   pinMode(relay1, OUTPUT);
 #ifdef SWITCH
   pinMode(button1, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(button1), buttonISR, RISING);
 #endif//SWITCH
-  
 
   Serial.begin(115200);
   Serial.println();
-  Serial.print("Connecting to... ");
-  Serial.print(ssid);
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
 
+  //WiFi.hostname(hostString);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   while(WiFi.status() != WL_CONNECTED)
@@ -198,8 +206,33 @@ void setup(void)
     Serial.print(".");
   }
   Serial.println();
-  Serial.println("WiFi Connected");
+  Serial.print("WiFi connected with the address ");
+  Serial.println(WiFi.localIP());
 
+
+/* SETUP mDNS */
+#ifdef M_DNS
+  if(!MDNS.begin(hostString))
+    Serial.print("Error mDNS");
+  else
+  {
+    Serial.print("mDNS started with the name ");
+    Serial.print(hostString);
+    Serial.println(".local");
+#ifdef HTTP
+#ifndef USE_HTTPS
+    MDNS.addService("http", "tcp", 80);
+#else
+    MDNS.addService("https", "tcp", 443);
+#endif//USE_HTTPS
+#endif//HTTP
+#ifdef MQTT
+    MDNS.addService("mqtt", "tcp", portMQTT);
+#endif
+  }
+#endif//M_DNS
+
+/* SETUP Webserver */
 #ifdef USE_HTTPS
   serverHTTP.setServerKeyAndCert_P(rsakey, sizeof(rsakey), x509, sizeof(x509));
 #endif//USE_HTTPS
@@ -208,21 +241,36 @@ void setup(void)
 
   serverHTTP.begin();
   Serial.print("Server HTTP started at ");
+#ifdef M_DNS
+#ifndef USE_HTTPS
+  Serial.print("http://");
+#else
+  Serial.print("https://");
+#endif//USE_HTTPS
+  Serial.print(hostString);
+  Serial.print(".local or ");
+#endif//M_DNS
+#ifndef USE_HTTPS
+  Serial.print("http://");
+#else
+  Serial.print("https://");
+#endif//USE_HTTPS
   Serial.println(WiFi.localIP());
 #endif//HTTP
+
+/* SETUP MQTT protocol */
 #ifdef MQTT
   while(!clientMQTT.connected())
   {
-    Serial.print("Connecting to MQTT server...");
     if(clientMQTT.connect("arduinoClient", userMQTT, passwdMQTT))
     {
-      Serial.println("OK");
+      Serial.println("MQTT client connected");
       clientMQTT.setCallback(rcvMQTT);
       clientMQTT.subscribe("yaoonoffs/relay/cmd");
     }
     else
     {
-      Serial.print("Error:");
+      Serial.print("Error to connect MQTT server: ");
       Serial.println(clientMQTT.state());
       delay(1000);
     } 
