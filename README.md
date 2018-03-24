@@ -1,1 +1,1 @@
-# Yaoonoffs - Yet An Other On/Off Switch
+# Yaoonoffs - Yet another On/Off Switch
