@@ -11,8 +11,13 @@ Description: Un autre firmware pour les cartes ESP8266 pour piloter un relais. C
 */
 
 const char *hostString = "yaoonoffs";
+
 const char *ssid       = "--------";
 const char *password   = "--------";
+
+const char *userHTTP   = "--------";
+const char *passwdHTTP = "--------";
+
 const char *serverMQTT = "mqtt.server.lan";
 const int  portMQTT    = 1883;
 const char *userMQTT   = "--------";

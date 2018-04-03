@@ -12,9 +12,11 @@ Description: Un autre firmware pour les cartes ESP8266 pour piloter un relais. C
 
 //#define DEBUG
 #define HTTP
+#define HTTP_AUTH             /* Authentification sur le serveur web */
 #define USE_HTTPS             /* Utilise le protocole HTTPS */
 #define M_DNS                 /* Découverte de l'objet avec mDNS */
-#define MQTT                  /* Activer le serveur MQTT. Attention, il ne passe par une couche TLS */
+//#define MQTT                  /* Activer le serveur MQTT. Attention, il ne passe par une couche TLS */
+//#define _SONOFF_              /* Pour une plateforme SONOFF */
 #define SWITCH                /* Utiliser un bouton pour piloter l'interrupteur */
 
 #include <ESP8266WiFi.h>
@@ -41,6 +43,13 @@ Description: Un autre firmware pour les cartes ESP8266 pour piloter un relais. C
 /* Fichier de configuration avec les variables à personnaliser */
 #include "config.h"
 
+#ifdef _SONOFF_
+  const int button1   = 0;
+  const int relay1    = 12;
+  const int led_green = 13;
+  const int led_red   = 14;
+#endif//_SONOFF_
+
 
 /* Définir les librairies */
 #ifdef MQTT
@@ -64,9 +73,9 @@ int state_relay1 = 0;
 int lastDebounceTime = 5;
 int debounceDelay = 500;
 
-/*************/
-/* Functions */
-/*************/
+/*******************************************************************/
+/************************* Functions *******************************/
+/*******************************************************************/
 
 /* Headers */
 void handleSubmit(void);
@@ -124,9 +133,9 @@ void rcvMQTT(char *topic, byte *_payload, unsigned int len)
     payload += (char)_payload[i];
 
   Serial.println(payload);
-  if(payload == "on")
+if(payload == "on")
   {
-    onRelay();
+   onRelay();
   }
 }
 #endif//MQTT
@@ -183,9 +192,14 @@ void buttonISR(void)
 }
 #endif//SWITCH
 
+/*******************************************************************/
+/****************************** SETUP ******************************/
+/*******************************************************************/
 void setup(void)
 {
+/*****************/
 /* SETUP Pinouts */
+/*****************/
   pinMode(relay1, OUTPUT);
 #ifdef SWITCH
   pinMode(button1, INPUT_PULLUP);
@@ -210,7 +224,9 @@ void setup(void)
   Serial.println(WiFi.localIP());
 
 
+/**************/
 /* SETUP mDNS */
+/**************/
 #ifdef M_DNS
   if(!MDNS.begin(hostString))
     Serial.print("Error mDNS");
@@ -232,12 +248,24 @@ void setup(void)
   }
 #endif//M_DNS
 
+/*******************/
 /* SETUP Webserver */
+/*******************/
+#ifdef HTTP
 #ifdef USE_HTTPS
   serverHTTP.setServerKeyAndCert_P(rsakey, sizeof(rsakey), x509, sizeof(x509));
 #endif//USE_HTTPS
-#ifdef HTTP
+
+#ifdef HTTP_AUTH
+  serverHTTP.on("/", []()
+  {
+    if (!serverHTTP.authenticate(userHTTP, passwdHTTP))
+      return serverHTTP.requestAuthentication(DIGEST_AUTH, "Connected", "Connection refused");
+    handleRoot();
+  });
+#else
   serverHTTP.on("/", handleRoot);
+#endif//HTTP_AUTH
 
   serverHTTP.begin();
   Serial.print("Server HTTP started at ");
@@ -258,7 +286,9 @@ void setup(void)
   Serial.println(WiFi.localIP());
 #endif//HTTP
 
+/***********************/
 /* SETUP MQTT protocol */
+/***********************/
 #ifdef MQTT
   while(!clientMQTT.connected())
   {
@@ -278,6 +308,9 @@ void setup(void)
 #endif//MQTT
 }
 
+/*******************************************************************/
+/***************************** MAIN LOOP****************************/
+/*******************************************************************/
 void loop(void)
 {
 #ifdef HTTP

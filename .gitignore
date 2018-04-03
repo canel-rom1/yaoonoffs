@@ -1,4 +1,4 @@
 build-esp8266*
 config.h
-Makefile
+Makefile*
 *.swp
