@@ -2,8 +2,7 @@
 Project: YAOOnOffS - Yet An Other on/off Switch (Sonoff)
 File: yaoonoffs.ino
 Version: 0.1
-Create by: Rom1 <rom1@canel.ch>
-		   CANEL - https://www.canel.ch
+Create by: Rom1 <rom1@canel.ch> - CANEL - https://www.canel.ch
 Date: 28/02/18
 License: GNU GENERAL PUBLIC LICENSE v3
 Language: Arduino (C/C++)
