@@ -14,7 +14,8 @@ Description: Un autre firmware pour les cartes ESP8266 pour piloter un relais. C
 #define HTTP_AUTH             /* Authentification sur le serveur web */
 #define USE_HTTPS             /* Utilise le protocole HTTPS */
 #define M_DNS                 /* Découverte de l'objet avec mDNS */
-//#define MQTT                  /* Activer le serveur MQTT. Attention, il ne passe par une couche TLS */
+#define MQTT                  /* Activer le serveur MQTT. Attention, il ne passe par une couche TLS */
+#define _MQTT_SECURE_         /* Ajoute une couche SSL sur MQTT */
 //#define _SONOFF_              /* Pour une plateforme SONOFF */
 #define SWITCH                /* Utiliser un bouton pour piloter l'interrupteur */
 
@@ -33,6 +34,7 @@ Description: Un autre firmware pour les cartes ESP8266 pour piloter un relais. C
 
 #ifdef MQTT
   #include <PubSubClient.h>
+  #include "mqtt-ssl.h"
 #endif//MQTT
 
 #ifdef DEBUG
@@ -52,20 +54,21 @@ Description: Un autre firmware pour les cartes ESP8266 pour piloter un relais. C
 
 /* Définir les librairies */
 #ifdef MQTT
-WiFiClient espClient;
+# ifndef _MQTT_SECURE_
+  WiFiClient espClient;
+# else
+  WiFiClientSecure espClient;
+# endif//_MQTT_SECURE_
+PubSubClient clientMQTT(serverMQTT, portMQTT, espClient);
 #endif//MQTT
 
 #ifdef HTTP
-#ifndef USE_HTTPS
-ESP8266WebServer serverHTTP(80);
-#else
-ESP8266WebServerSecure serverHTTP(443);
+# ifndef USE_HTTPS
+  ESP8266WebServer serverHTTP(80);
+# else
+  ESP8266WebServerSecure serverHTTP(443);
 #endif//USE_HTTPS
 #endif//HTTP
-
-#ifdef MQTT
-PubSubClient clientMQTT(serverMQTT, portMQTT, espClient);
-#endif//MQTT
 
 /* Variables globales */
 int state_relay1 = 0;
@@ -73,7 +76,7 @@ int lastDebounceTime = 5;
 int debounceDelay = 500;
 
 /*******************************************************************/
-/************************* Functions *******************************/
+/************************* FUNCTIONS *******************************/
 /*******************************************************************/
 
 /* Headers */
@@ -210,7 +213,6 @@ void setup(void)
   Serial.print("Connecting to ");
   Serial.println(ssid);
 
-  //WiFi.hostname(hostString);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   while(WiFi.status() != WL_CONNECTED)
@@ -289,6 +291,11 @@ void setup(void)
 /* SETUP MQTT protocol */
 /***********************/
 #ifdef MQTT
+# ifdef _MQTT_SECURE_
+  espClient.setCertificate(yaoonoffs_bin_crt, yaoonoffs_bin_crt_len);
+  espClient.setPrivateKey(yaoonoffs_bin_key, yaoonoffs_bin_key_len);
+# endif//_MQTT_SECURE_
+
   while(!clientMQTT.connected())
   {
     if(clientMQTT.connect("arduinoClient", userMQTT, passwdMQTT))
@@ -308,7 +315,7 @@ void setup(void)
 }
 
 /*******************************************************************/
-/***************************** MAIN LOOP****************************/
+/***************************** MAIN LOOP ***************************/
 /*******************************************************************/
 void loop(void)
 {
